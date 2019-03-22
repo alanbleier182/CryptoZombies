@@ -1,0 +1,55 @@
+pragma solidity ^0.4.25;
+
+// ZombieFeeding inherits from ZombieFactory, so an importing it is mandatory
+import "./zombiefactory.sol";
+
+// Creates a Kitty Interface to interact with the "CryptoKitties" contract and use its getKitty function
+contract KittyInterface {
+  function getKitty(uint256 _id) external view returns (
+    bool isGestating,
+    bool isReady,
+    uint256 cooldownIndex,
+    uint256 nextActionAt,
+    uint256 siringWithId,
+    uint256 birthTime,
+    uint256 matronId,
+    uint256 sireId,
+    uint256 generation,
+    uint256 genes
+  );
+}
+
+// Establishes the principles of zombie-feeding.
+contract ZombieFeeding is ZombieFactory {
+
+  The address where crypto kitties reside in the blockchain
+  address ckAddress = 0x06012c8cf97BEaD5deAe237070F9587f8E7A266d;
+  KittyInterface kittyContract = KittyInterface(ckAddress);
+
+  // The feeding function
+  function feedAndMultiply(uint _zombieId, uint _targetDna, string _species) public {
+    // Only the owner of the zombie can feed it
+    require(msg.sender == zombieToOwner[_zombieId]);
+    Zombie storage myZombie = zombies[_zombieId];
+    _targetDna = _targetDna % dnaModulus;
+    // The new DNA is simpy the average between the feeding zombie and the host.
+    uint newDna = (myZombie.dna + _targetDna) / 2;
+    // if the host is a kitty then the last two digits of its DNA will be "99"
+    if (keccak256(abi.encodePacked(_species)) == keccak256(abi.encodePacked("kitty"))) {
+        // Replaces the last two digits of the DNA with 99
+        // Explanation: Assume newDna is 334455. Then newDna % 100 is 55, so newDna - newDna % 100 is 334400. 
+        // Finally add 99 to get 334499.
+        newDna = newDna - newDna % 100 + 99;
+    }
+    _createZombie("NoName", newDna);
+  }
+
+  // A function to feed on kitties
+  function feedOnKitty(uint _zombieId, uint _kittyId) public {
+    uint kittyDna;
+    // the getkitty method returns 10 variables. We only need the last one (kittyDna), that's why we have 9 commas here.
+    (,,,,,,,,,kittyDna) = kittyContract.getKitty(_kittyId);
+    feedAndMultiply(_zombieId, kittyDna, "kitty");
+  }
+
+}
