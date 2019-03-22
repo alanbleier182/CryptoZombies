@@ -1,0 +1,46 @@
+pragma solidity ^0.4.25;
+
+// This program creates a zombie factory. All created Zombies will be stored in the blockchain.
+contract ZombieFactory {
+
+    // Let's the front-end know a new zombie has been created
+    event NewZombie(uint zombieId, string name, uint dna);
+    
+    // A semi-random generated number of 16 digits will determine the zombies' traits
+    uint dnaDigits = 16;
+    uint dnaModulus = 10 ** dnaDigits;
+
+    // A zombie has a name and dna
+    struct Zombie {
+        string name;
+        uint dna;
+    }
+
+    // A dynamic array of zombies
+    Zombie[] public zombies;
+
+    // This private function creates a zombie and gives it an ID.
+    function _createZombie(string _name, uint _dna) private {
+        uint id = zombies.push(Zombie(_name, _dna)) - 1;
+        emit NewZombie(id, _name, _dna);
+    } 
+
+    // This private function creates a semi-random generated number
+    // It is set to view, since only reading (not writing) is done
+    // It returns a uint (declared in the function declaration in solidity)
+    function _generateRandomDna(string _str) private view returns (uint) {
+        // uint() is a type cast to type uint. keccak256(abi.encodePacked()) hashes a string, _str
+        uint rand = uint(keccak256(abi.encodePacked(_str)));
+        // returns a 16 digit number
+        return rand % dnaModulus;
+    }
+
+    // This public function creates a random zombie with a given name
+    function createRandomZombie(string _name) public {
+        // calls for the _generateRandomDna function with the name as a seed for the hash
+        uint randDna = _generateRandomDna(_name);
+        // Creates a zombie with both a name and a dna
+        _createZombie(_name, randDna);
+    }
+
+}
