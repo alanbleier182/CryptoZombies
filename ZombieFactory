@@ -19,7 +19,7 @@ contract ZombieFactory {
     // A dynamic array of zombies
     Zombie[] public zombies;
 
-    // This private function creates a zombie and gives it an ID.
+    // This internal function creates a zombie and gives it an ID.
     function _createZombie(string _name, uint _dna) private {
         uint id = zombies.push(Zombie(_name, _dna)) - 1;
         emit NewZombie(id, _name, _dna);
