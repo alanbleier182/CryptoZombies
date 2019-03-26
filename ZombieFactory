@@ -1,46 +1,71 @@
 pragma solidity ^0.4.25;
 
-// This program creates a zombie factory. All created Zombies will be stored in the blockchain.
-contract ZombieFactory {
+// Import's Oppen Zeppelin's "ownable" (to verify owner) and "safemath" (to prevent overflows) contracts.
+import "./ownable.sol";
+import "./safemath.sol";
 
-    // Let's the front-end know a new zombie has been created
-    event NewZombie(uint zombieId, string name, uint dna);
-    
-    // A semi-random generated number of 16 digits will determine the zombies' traits
-    uint dnaDigits = 16;
-    uint dnaModulus = 10 ** dnaDigits;
+// This program creates a zombie factory.
+// All created Zombies are permanently stored in the blockchain.
 
-    // A zombie has a name and dna
-    struct Zombie {
-        string name;
-        uint dna;
-    }
+contract ZombieFactory is Ownable {
 
-    // A dynamic array of zombies
-    Zombie[] public zombies;
+  // Preventing overflows
+  // Maybe new versions of Solidity will to this be default, but in the meantime...
+  using SafeMath for uint256;
+  using SafeMath32 for uint32;
+  using SafeMath16 for uint16;
 
-    // This internal function creates a zombie and gives it an ID.
-    function _createZombie(string _name, uint _dna) private {
-        uint id = zombies.push(Zombie(_name, _dna)) - 1;
-        emit NewZombie(id, _name, _dna);
-    } 
+  event NewZombie(uint zombieId, string name, uint dna);
 
-    // This private function creates a semi-random generated number
-    // It is set to view, since only reading (not writing) is done
-    // It returns a uint (declared in the function declaration in solidity)
-    function _generateRandomDna(string _str) private view returns (uint) {
-        // uint() is a type cast to type uint. keccak256(abi.encodePacked()) hashes a string, _str
-        uint rand = uint(keccak256(abi.encodePacked(_str)));
-        // returns a 16 digit number
-        return rand % dnaModulus;
-    }
+  // We use the 16 digits to display zombie's appereance
+  uint dnaDigits = 16;
+  uint dnaModulus = 10 ** dnaDigits;
+  uint cooldownTime = 1 days;
 
-    // This public function creates a random zombie with a given name
-    function createRandomZombie(string _name) public {
-        // calls for the _generateRandomDna function with the name as a seed for the hash
-        uint randDna = _generateRandomDna(_name);
-        // Creates a zombie with both a name and a dna
-        _createZombie(_name, randDna);
-    }
+  struct Zombie {
+    string name;
+    uint dna;
+    uint32 level;
+    uint32 readyTime;
+    uint16 winCount;
+    uint16 lossCount;
+  }
+
+  // Zombie's are stored in an array
+  Zombie[] public zombies;
+
+  mapping (uint => address) public zombieToOwner;
+  mapping (address => uint) ownerZombieCount;
+
+  // Creates zombies
+  function _createZombie(string _name, uint _dna) internal {
+    // A new zombie is created (level 1, 0 wins and losses) and push into the array
+    // First element of the array is zero, so substract 1
+    uint id = zombies.push(Zombie(_name, _dna, 1, uint32(now + cooldownTime), 0, 0)) - 1;
+    // This zombie belongs to its creator
+    zombieToOwner[id] = msg.sender;
+    // Add 1 to zombie count
+    ownerZombieCount[msg.sender] = ownerZombieCount[msg.sender].add(1);
+    // Inform the front-end about the creation of the zombie
+    emit NewZombie(id, _name, _dna);
+  }
+
+  // The hash is calculated from the name as its seed, and made into a 16-digit unsigned integer
+  function _generateRandomDna(string _str) private view returns (uint) {
+    uint rand = uint(keccak256(abi.encodePacked(_str)));
+    return rand % dnaModulus;
+  }
+
+  // Creates a random zombie for the first time
+  function createRandomZombie(string _name) public {
+    // This has to be the very first zombie
+    require(ownerZombieCount[msg.sender] == 0);
+    // Calculate dna hash
+    uint randDna = _generateRandomDna(_name);
+    randDna = randDna - randDna % 100;
+    // Calls the _createZombie function with the randomized dna
+    _createZombie(_name, randDna);
+  }
 
 }
+
