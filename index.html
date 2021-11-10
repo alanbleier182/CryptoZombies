@@ -28,6 +28,14 @@
             .then(displayZombies);
           }
         }, 100);
+        
+        // Use `filter` to only fire this code when `_to` equals `userAccount`
+        cryptoZombies.events.Transfer({ filter: { _to: userAccount } })
+        .on("data", function(event) {
+          let data = event.returnValues;
+          // The current user just received a zombie!
+          getZombiesByOwner(userAccount).then(displayZombies);
+         }).on("error", console.error);
       }
 
       function displayZombies(ids) {
@@ -61,7 +69,7 @@
           .send({ from: userAccount })
           .on("receipt", function(receipt) {
             $("#txStatus").text("Successfully created " + name + "!");
-            // Transaction was accepted into the blockchain, let's redraw the UI
+            // Transaction was accepted into the blockchain. Redraw the UI
             getZombiesByOwner(userAccount).then(displayZombies);
           })
           .on("error", function(error) {
@@ -79,7 +87,7 @@
             .send({ from: userAccount })
             .on("receipt", function(receipt) {
               $("#txStatus").text("Ate a kitty and spawned a new Zombie!");
-              // Transaction was accepted into the blockchain, let's redraw the UI
+              // Transaction was accepted into the blockchain. Redraw the UI
               getZombiesByOwner(userAccount).then(displayZombies);
             })
             .on("error", function(error) {
@@ -123,7 +131,7 @@
           // Probably show them a message prompting them to install Metamask
         }
 
-        // Now you can start your app & access web3 freely:
+        // Start App
         startApp()
 
       })
